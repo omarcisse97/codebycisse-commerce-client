@@ -6,6 +6,10 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: process.env.PORT || 3000,
-    allowedHosts: 'all'
+    allowedHosts: [
+      'codebycisse-commerce-client-production.up.railway.app',
+      'localhost',
+      '.railway.app'
+    ]
   }
 })
