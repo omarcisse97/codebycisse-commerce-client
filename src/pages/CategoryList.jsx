@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSearch } from '../contexts/SearchContext';
 import ProductGrid from '../components/product/ProductGrid';
 import { useCategories } from '../contexts/CategoryContext';
-import CategoryIcons from '../utils/categoryIcons';
+import CategoryIcons from '../utils/CategoryIcons';
 import { useAuth } from '../contexts/AuthContext';
 
 const CategoryList = () => {
