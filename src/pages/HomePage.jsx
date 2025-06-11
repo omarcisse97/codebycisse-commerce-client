@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon, FunnelIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useSearch } from '../contexts/SearchContext';
@@ -7,7 +7,6 @@ import ProductGrid from '../components/product/ProductGrid';
 import { medusaClient } from '../utils/client';
 import { useCategories } from '../contexts/CategoryContext';
 import { MedusaProduct } from '../models/store/MedusaProduct';
-import { MedusaCategory } from '../models/store/MedusaCategory';
 
 function getPriceOptions(currency) {
   const exchangeRates = {
@@ -71,28 +70,28 @@ const HomePage = () => {
   const [sortBy, setSortBy] = useState('none');
   const [priceRange, setPriceRange] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [categoriesMedusa, setCategoriesMedusa] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [baseProducts, setBaseProducts] = useState([]);
   const [currentCategoryProductCount, setCurrentCategoryProductCount] = useState('Searching...');
   const [priceOptions, setPriceOptions] = useState([]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [productsPerPage] = useState(12);
-  const [paginatedProducts, setPaginatedProducts] = useState([]);
+  const [totalProducts, setTotalProducts] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  const categoryNameMedusa = !handle ? 'All Products' : `${handle[0]?.toUpperCase()}${handle?.substring(1)}`;
+  // Memoized category name
+  const categoryNameMedusa = useMemo(() => 
+    !handle ? 'All Products' : `${handle[0]?.toUpperCase()}${handle?.substring(1)}`,
+    [handle]
+  );
 
-  // Initialize categories from context (already formatted)
-  useEffect(() => {
+  // Memoized categories
+  const categoriesMedusa = useMemo(() => {
     if (categories_ && categories_.length > 0) {
-      setLoading(true);
-      setCategoriesMedusa(categories_);
-      setSelectedCategory(null);
-      setLoading(false);
+      return categories_;
     }
+    return [];
   }, [categories_]);
 
   // Update price options when region changes
@@ -118,7 +117,49 @@ const HomePage = () => {
     }
   }, [categoriesMedusa, handle, navigate]);
 
-  // Fetch and process products using MedusaProduct class
+  // Build query parameters for API
+  const buildQuery = useMemo(() => {
+    const query = {
+      region_id: region?.code,
+      limit: productsPerPage,
+      offset: (currentPage - 1) * productsPerPage,
+      fields: '*categories'
+    };
+
+    // Add category filter if not "all"
+    if (selectedCategory && selectedCategory.value !== 'all' && selectedCategory.id) {
+      query.category_id = selectedCategory.id;
+    }
+
+    // Add price range filter at API level if possible
+    if (priceRange !== 'all') {
+      // Note: Medusa might not support price filtering directly
+      // This would need to be implemented based on your Medusa version
+      // For now, we'll filter after fetching
+    }
+
+    // Add sorting
+    if (sortBy !== 'none') {
+      switch (sortBy) {
+        case 'price':
+          query.order = 'variants.prices.amount';
+          break;
+        case '-price':
+          query.order = '-variants.prices.amount';
+          break;
+        case 'title':
+          query.order = 'title';
+          break;
+        case '-title':
+          query.order = '-title';
+          break;
+      }
+    }
+
+    return query;
+  }, [region, selectedCategory, currentPage, productsPerPage, sortBy, priceRange]);
+
+  // Optimized product fetching
   useEffect(() => {
     const fetchProducts = async () => {
       if (!region || !selectedCategory) return;
@@ -127,150 +168,92 @@ const HomePage = () => {
       setCurrentCategoryProductCount("Searching...");
 
       try {
-        const allProducts = [];
-        const query = { region_id: region?.code };
+        // Single API call with pagination and filtering
+        const { products: fetchedProducts, count } = await medusaClient.store.product?.list(buildQuery);
 
-        // Add category filter if not "all"
-        if (selectedCategory && selectedCategory.value !== 'all' && selectedCategory.id && selectedCategory.id !== '') {
-          query.category_id = selectedCategory.id;
-        }
+        // Convert to MedusaProduct instances only for displayed products
+        const medusaProducts = fetchedProducts.map(product => 
+          new MedusaProduct(
+            product.id,
+            product.title,
+            product.handle,
+            product.thumbnail,
+            [...product.variants],
+            [...product.categories],
+            product.description,
+            [...product.images]
+          )
+        );
 
-        let offsetCount = 0;
-        let hasMorePages = true;
+        // Apply client-side price filtering if needed (since Medusa might not support it)
+        let filteredProducts = medusaProducts;
+        if (priceRange !== 'all') {
+          filteredProducts = medusaProducts.filter(product => {
+            const priceAmount = product.getVariantFormattedPriceByIndex(0);
+            if (priceAmount === 'Unavailable') return false;
 
-        // Fetch all products in batches
-        while (hasMorePages) {
-          const { products: pageProducts, count } = await medusaClient.store.product?.list({
-            limit: 100,
-            offset: offsetCount,
-            ...query,
-            fields: '*categories'
+            const numericPrice = parseFloat(priceAmount.replace(/[^0-9.-]+/g, '')) * 100;
+
+            if (priceRange.startsWith('under-')) {
+              const limit = Number(priceRange.split('-')[1]);
+              return numericPrice < limit;
+            } else if (priceRange.startsWith('over-')) {
+              const limit = Number(priceRange.split('-')[1]);
+              return numericPrice > limit;
+            } else if (priceRange.includes('-')) {
+              const [min, max] = priceRange.split('-').map(Number);
+              return numericPrice >= min && numericPrice <= max;
+            }
+            return true;
           });
-
-          allProducts.push(...pageProducts);
-          offsetCount += pageProducts.length;
-          hasMorePages = pageProducts.length === 100 && offsetCount < count;
         }
-        
 
-        let temp = [];
-        if (allProducts.length > 0) {
-          for (let i = 0; i < allProducts.length; i++) {
-            temp.push(
-              new MedusaProduct(
-                allProducts[i]?.id,
-                allProducts[i]?.title,
-                allProducts[i]?.handle,
-                allProducts[i]?.thumbnail,
-                [...allProducts[i]?.variants],
-                [...allProducts[i]?.categories],
-                allProducts[i]?.description,
-                [...allProducts[i]?.images]
-              )
-            );
-          }
+        // Apply client-side sorting if API doesn't support it
+        if (sortBy !== 'none') {
+          filteredProducts.sort((a, b) => {
+            const priceA = a._variants[0]?._prices[0]?._amount || 0;
+            const priceB = b._variants[0]?._prices[0]?._amount || 0;
+
+            switch (sortBy) {
+              case 'price':
+                return priceA - priceB;
+              case '-price':
+                return priceB - priceA;
+              case 'title':
+                return a._title.localeCompare(b._title);
+              case '-title':
+                return b._title.localeCompare(a._title);
+              default:
+                return 0;
+            }
+          });
         }
-        // setBaseProducts(medusaProducts);
-        setBaseProducts([...temp]);
-        setCurrentCategoryProductCount(`Found ${temp.length} products`);
-        setLoading(false);
+
+        setProducts(filteredProducts);
+        setTotalProducts(count);
+        setTotalPages(Math.ceil(count / productsPerPage));
+        setCurrentCategoryProductCount(`Found ${count} products`);
+
       } catch (error) {
         console.error('Error fetching products:', error);
         setCurrentCategoryProductCount("Error loading products.");
-        setBaseProducts([]);
+        setProducts([]);
+        setTotalProducts(0);
+        setTotalPages(0);
+      } finally {
         setLoading(false);
       }
     };
 
     fetchProducts();
-  }, [selectedCategory, region]);
+  }, [buildQuery, selectedCategory, region]);
 
-  // Apply filters and sorting
+  // Reset to first page when filters change
   useEffect(() => {
-
-
-    if (baseProducts && baseProducts?.length > 0) {
-      // Price filtering using MedusaProduct methods
-      let flatProducts = [];
-
-      if (Array.isArray(baseProducts)) {
-        // Use flat(Infinity) to handle any level of nesting
-        flatProducts = baseProducts.flat(Infinity);
-      } else {
-        flatProducts = [baseProducts];
-      }
-      let filtered = flatProducts;
-      
-      
-      if (priceRange !== 'all') {
-
-        filtered = filtered.filter(product => {
-          
-          const priceAmount = product?.getVariantFormattedPriceByIndex(0);
-          
-          if (priceAmount === 'Unavailable') return false;
-
-          // Extract numeric value from formatted price
-          const numericPrice = parseFloat(priceAmount.replace(/[^0-9.-]+/g, '')) * 100; // Convert to cents
-
-          if (priceRange.startsWith('under-')) {
-            const limit = Number(priceRange.split('-')[1]);
-            return numericPrice < limit;
-          } else if (priceRange.startsWith('over-')) {
-            const limit = Number(priceRange.split('-')[1]);
-            return numericPrice > limit;
-          } else if (priceRange.includes('-')) {
-            const [min, max] = priceRange.split('-').map(Number);
-            return numericPrice >= min && numericPrice <= max;
-          }
-          return true;
-        });
-      }
-
-      // Sorting
-      if (sortBy !== 'none') {
-        filtered.sort((a, b) => {
-          const priceA = a._variants[0]?._prices[0]?._amount || 0;
-          const priceB = b._variants[0]?._prices[0]?._amount || 0;
-
-          switch (sortBy) {
-            case 'price':
-              return priceA - priceB;
-            case '-price':
-              return priceB - priceA;
-            case 'title':
-              return a._title.localeCompare(b._title);
-            case '-title':
-              return b._title.localeCompare(a._title);
-            default:
-              return 0;
-          }
-        });
-      }
-      setProducts(filtered);
+    if (currentPage !== 1) {
       setCurrentPage(1);
     }
-
-
-    // Reset to first page when filters change
-  }, [baseProducts, priceRange, sortBy]);
-
-  // Pagination logic
-  useEffect(() => {
-
-    const totalPages = Math.ceil(products.length / productsPerPage);
-    setTotalPages(totalPages);
-
-    const startIndex = (currentPage - 1) * productsPerPage;
-    const endIndex = startIndex + productsPerPage;
-
-   
-    const paginated = products.slice(startIndex, endIndex);
-
-
-
-    setPaginatedProducts(paginated);
-  }, [products, currentPage, productsPerPage]);
+  }, [sortBy, priceRange, selectedCategory]);
 
   // Pagination handlers
   const handlePageChange = (page) => {
@@ -481,7 +464,7 @@ const HomePage = () => {
               <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {loading
                   ? 'Loading products...'
-                  : `Showing ${(currentPage - 1) * productsPerPage + 1}-${Math.min(currentPage * productsPerPage, products.length)} of ${products.length} products`
+                  : `Showing ${(currentPage - 1) * productsPerPage + 1}-${Math.min(currentPage * productsPerPage, totalProducts)} of ${totalProducts} products`
                 }
               </p>
               <div className="flex items-center space-x-4">
@@ -500,7 +483,7 @@ const HomePage = () => {
               </div>
             </div>
 
-            <ProductGrid products={paginatedProducts} loading={loading} />
+            <ProductGrid products={products} loading={loading} />
 
             {/* Pagination */}
             {!loading && totalPages > 1 && (
@@ -569,7 +552,7 @@ const HomePage = () => {
             )}
 
             {/* No products message */}
-            {paginatedProducts.length === 0 && !loading && (
+            {products.length === 0 && !loading && (
               <p className={`text-center text-lg mt-8 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 No products found for this category and filter.
               </p>
