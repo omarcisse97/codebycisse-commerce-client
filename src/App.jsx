@@ -1,90 +1,94 @@
-import { Routes, Route } from "react-router-dom";
-import { useEffect, useState } from "react";
+// App.jsx
+import React, { useState, useEffect } from 'react';
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import { CartProvider } from './contexts/CartContext';
+import { SearchProvider } from './contexts/SearchContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { CategoryProvider } from './contexts/CategoryContext';
+import Header from './components/layout/Header';
+import Footer from './components/layout/Footer';
+import RegionModal from './components/modals/RegionModal';
+import HomePage from './pages/HomePage';
+import ProductPage from './pages/ProductPage';
+import CartPage from './pages/CartPage';
+import CategoryPage from './pages/CategoryPage';
+import SearchPage from './pages/SearchPage';
+import AccountPage from './pages/AccountPage';
+import './App.css';
 import { medusaClient } from "./utils/client";
-import './App.css'
-import RegionSelector from "./components/RegionSelector";
-import NavHeader from './components/NavHeader'
-import Home from './routes/Home'
-import Product from './routes/Product'
-import Search from "./routes/Search";
+import CategoryList from './pages/CategoryList';
+// Layout component that wraps all pages
+
+
+// Create router configuration
+
 
 function App() {
 
-  const [regionid, setRegionid] = useState(localStorage.getItem('region'));
-  const [regionObj, setRegionObj] = useState({});
-  const [cart, setCart] = useState(null);
-  const [loggedIn, setLoggedIn] = useState(false);
 
-  useEffect(() => {
-    const getRegions = async() => {
-      const regions = await medusaClient.store.region.retrieve(regionid);
-      setRegionObj(regions);
-    }
-    const attemptCustomerRetrieve = async() => {
-      const temp = await medusaClient.store.customer.retrieve();
-      if(temp?.customer?.has_account === true && temp?.customer?.id !== null){
-        if(!localStorage.getItem('loggedIn')){
-          localStorage.setItem('loggedIn', "true");
-        }
-        setLoggedIn(true);
-      } else {
-        if(!localStorage.getItem('loggedIn')){
-          localStorage.setItem('loggedIn', "false");
-        }
-      }
-    };
-    if(regionid){
-      getRegions();
-      // getUserRegion();
-    }
-    if(!localStorage.getItem('loggedIn') || localStorage.getItem('loggedIn') === 'true'){
-      attemptCustomerRetrieve();
-    } 
-  }, []);
-  
+  const Layout = () => {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col transition-colors">
+        <Header />
+        <main className="flex-1">
+          <Outlet />
+        </main>
+        <Footer />
+        <Toaster position="bottom-right" />
+        <RegionModal />
+      </div>
+    );
+  };
 
-  useEffect(() => {
-    const createCart = async () => {
-            try {
-                const temp = await medusaClient.store.cart.create({ region_id: regionid });
-                setCart(cart);
-            } catch (err) {
-                console.error("Failed to create cart:", err);
-                setError("Failed to create shopping cart.");
-            }
-        };
-    if(regionid){
-      createCart();
-    }
-  }, [regionid])
+  const router = createBrowserRouter([
+    {
+      path: "/",
+      element: <Layout />,
+      children: [
+        {
+          index: true,
+          element: <HomePage />,
+        },
+        {
+          path: ":handle?", // Optional handle parameter for home page with category
+          element: <HomePage />,
+        },
+        {
+          path: "products/:handle",
+          element: <ProductPage />,
+        },
+        {
+          path: "cart",
+          element: <CartPage />,
+        },
+        {
+          path: "categories",
+          element: <CategoryList />,
+        },
+        {
+          path: "search",
+          element: <SearchPage />,
+        },
+        {
+          path: "account",
+          element: <AccountPage />,
+        },
+      ],
+    },
+  ]);
 
-  useEffect(() => {
-    const getRegions = async() => {
-      const regions = await medusaClient.store.region.retrieve(regionid);
-      setRegionObj(regions);
-    }
-    if(regionid){
-      getRegions();
-    }
-  }, [regionid])
-
-  const onRegionSelect = (regionSelected) => {
-   
-    setRegionid(regionSelected);
-    localStorage.setItem('region', regionSelected);
-  }
-  
   return (
-    <div className="App">
-      {!regionid && <RegionSelector onRegionSelect={onRegionSelect} /> }
-      <NavHeader regionid={regionid} onRegionSelect={onRegionSelect} loggedIn={loggedIn} setLoggedIn={setLoggedIn} />
-      <Routes>
-        <Route path="/" element={<Home regionid={regionid} onRegionSelect={onRegionSelect} loggedIn={loggedIn} setLoggedIn={setLoggedIn} />} />
-        <Route path="products/:id" element={<Product regionid={regionid} onRegionSelect={onRegionSelect} loggedIn={loggedIn} setLoggedIn={setLoggedIn} />} />
-        <Route path="search/:keyword" element={<Search regionid={regionid} onRegionSelect={onRegionSelect} loggedIn={loggedIn} setLoggedIn={setLoggedIn} />} />
-      </Routes>
-    </div>
-  )
+    <AuthProvider>
+      <CategoryProvider>
+      <CartProvider>
+        <SearchProvider>
+          <RouterProvider router={router} />
+        </SearchProvider>
+      </CartProvider>
+      </CategoryProvider>
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;

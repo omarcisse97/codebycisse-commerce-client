@@ -7,7 +7,7 @@ import { medusaClient } from '../utils/client'; // Adjust path if needed
  * @returns {Promise<Object>} The customer object on successful login.
  * @throws {Error} If login fails.
  */
-export const login = async (email, password) => {
+export const login_ = async (email, password) => {
     try {
         const token = await medusaClient.auth.login(
             "customer",
@@ -18,10 +18,10 @@ export const login = async (email, password) => {
 
             });
         const customer = await medusaClient.store.customer.retrieve();
-        if(customer?.customer.has_account === true && customer?.customer.id !== null){
-                    localStorage.setItem('loggedIn', "true");
-                    return true;
-                }
+        if (customer?.customer.has_account === true && customer?.customer.id !== null) {
+
+            return true;
+        }
 
         return false;
     } catch (error) {
@@ -31,9 +31,8 @@ export const login = async (email, password) => {
     }
 };
 
-export const logout = async () => {
+export const logout_ = async () => {
     const result = await medusaClient.auth.logout();
-    localStorage.setItem('loggedIn', "false");
     return result;
 }
 
@@ -45,35 +44,44 @@ export const logout = async () => {
  * @returns {Promise<Object>} The customer object on successful registration.
  * @throws {Error} If registration fails.
  */
-export const register = async (fullName, email, password) => {
+export const register_ = async (firstName_,lastName_, email_, password_, phone_ = '') => {
     try {
-        // Medusa's createCustomer expects first_name and last_name
-        const nameParts = fullName.trim().split(/\s+/);
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
-
+        
+        const fieldsCus = {
+            email: email_,
+            first_name: firstName_,
+            last_name: lastName_,
+            password: password_
+        }
+        if(phone_ !== ''){
+            fieldsCus['phone'] = phone_;
+        }
+        
         const token = await medusaClient.auth.register(
             "customer",
             "emailpass",
-            {
-                email: email,
-                password: password,
-                first_name: firstName,
-                last_name: lastName
-            }
+            {...fieldsCus}
         );
+        
+        const etc =  {
+            email: email_,
+            first_name: firstName_,
+            last_name: lastName_,
+        }
+        if(phone_ !== ''){
+            etc['phone'] = phone_;
+        }
         await medusaClient.store.customer.create(
             {
-                "email": email,
-                "first_name": firstName,
-                "last_name": lastName
+                ...etc
             },
             {},
             {
                 Authorization: `Bearer ${token}`
             }
         );
-        return await login(email, password);
+        // return await login_(email, password);
+        return true;
     } catch (error) {
         console.error('Registration failed:', error);
         // Re-throw the error so the calling component can catch it
