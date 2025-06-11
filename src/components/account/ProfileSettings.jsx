@@ -65,7 +65,7 @@ const ProfileSettings = () => {
       // Remove email from updates since it can't be changed
       const { email, ...updateData } = formData;
 
-      console.log('Final data being sent to API:', updateData);
+      
 
       // Update customer details in Medusa and get updated user
       const result = await updateCustomerDetails(updateData);

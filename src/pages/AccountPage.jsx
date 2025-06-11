@@ -54,7 +54,7 @@ const AccountPage = () => {
         return <ProfileSettings />;
     }
   };
-  console.log('User Profile -> ', user);
+  
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
       darkMode ? 'bg-gray-900' : 'bg-gray-50'

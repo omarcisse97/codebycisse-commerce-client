@@ -1,10 +1,5 @@
 import { medusaClient } from '../utils/client';
-/* sdk.store.customer.update({
-  first_name: "John"
-})
-.then(({ customer }) => {
-  console.log(customer)
-}) */
+
 export const updateName = async (name) => {
     const [first_name = '', last_name = ''] = name.trim().split(' ');
 
@@ -16,7 +11,7 @@ export const updateName = async (name) => {
 
         return result;
     } catch (error) {
-        console.log('Unable to update user first name. error -> ', error);
+        console.error('Unable to update user first name. error -> ', error);
     }
 }
 export const updateCompany = async (company_name) => {
@@ -26,7 +21,7 @@ export const updateCompany = async (company_name) => {
         });
         return result;
     } catch (error) {
-        console.log('Unable to update user company name. error -> ', error);
+        console.error('Unable to update user company name. error -> ', error);
     }
 }
 export const updatePhone = async (phone) => {
@@ -36,7 +31,7 @@ export const updatePhone = async (phone) => {
         });
         return result;
     } catch (error) {
-        console.log('Unable to update user phone. error -> ', error);
+        console.error('Unable to update user phone. error -> ', error);
     }
 }
 export const updateCustomerDetails = async (data) => {
@@ -58,7 +53,7 @@ export const updateCustomerDetails = async (data) => {
                     results.push(phoneResult);
                     break;
                 default:
-                    console.log('Cannot find update field -> ', field);
+                    console.error('Cannot find update field -> ', field);
                     break;
             }
         }
@@ -66,6 +61,6 @@ export const updateCustomerDetails = async (data) => {
         return results;
 
     } catch (error) {
-        console.log('an error occured. Please check details -> ', error);
+        console.error('an error occured. Please check details -> ', error);
     }
 };

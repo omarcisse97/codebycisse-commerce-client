@@ -50,7 +50,7 @@ export const removeCookie = (name) => {
 export const savePreferredRegion = (regionId) => {
   try {
     setCookie(REGION_COOKIE_NAME, regionId);
-    console.log(`Region preference saved: ${regionId}`);
+    
   } catch (error) {
     console.error('Failed to save region preference:', error);
   }
@@ -74,7 +74,7 @@ export const getPreferredRegion = () => {
 export const clearRegionPreference = () => {
   try {
     removeCookie(REGION_COOKIE_NAME);
-    console.log('Region preference cleared');
+    
   } catch (error) {
     console.error('Failed to clear region preference:', error);
   }

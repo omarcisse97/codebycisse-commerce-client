@@ -271,8 +271,7 @@ export const AuthProvider = ({ children }) => {
    "default_shipping_address_id": "string",
    "company_name": "string",
          */
-        console.log('Medusa Client -> ', medusaClient);
-        console.log('Logged in -> ', user);
+        
         const enhancedUser = {
           id: user?.customer?.id,
           email: user?.customer?.email,
@@ -396,7 +395,7 @@ export const AuthProvider = ({ children }) => {
     if (state.user) {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
-        console.log('In context. New Address -> ', newAddress);
+        
         await medusaClient.store.customer.createAddress({
           first_name: newAddress?.first_name,
           last_name: newAddress?.last_name,
@@ -413,7 +412,7 @@ export const AuthProvider = ({ children }) => {
         const addressList = await medusaClient.store.customer.listAddress({ fields: '*address_name' });
         // dispatch({ type: 'SET_LOADING', payload: false });
         toast.success('Successfully created address!');
-        console.log(addressList);
+        
         return addressList;
       } catch (error) {
         toast.error('Failed to create new address');
@@ -421,13 +420,7 @@ export const AuthProvider = ({ children }) => {
       }
     }
   };
-  /**
-   * sdk.store.customer.deleteAddress(addrId)
-.then(({ parent: customer }) => {
-  // use customer...
-  console.log(customer)
-})
-   */
+
   const deleteAddress = async (id) => {
     if (state.user) {
       try {

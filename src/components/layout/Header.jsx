@@ -50,7 +50,7 @@ const Header = () => {
       await initMedusaCart({ region_id: region?.code });
 
     } catch (error) {
-      console.log('Failed to clear to logout, clear cart, or generate new one');
+      
     }
     setIsUserMenuOpen(false);
   };

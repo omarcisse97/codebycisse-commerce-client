@@ -10,14 +10,14 @@ const RegionModalPost = ({ isOpen, onClose }) => {
 
   const handleRegionChange = async (newRegion) => {
     setRegion(newRegion);
-    console.log('Region set up. Will try to create cart below');
+    
     try {
       await initMedusaCart({ region_id: newRegion?.code });
-      console.log('Confirmed cart :)');
+      
       onClose();
       // window.location.reload();
     } catch (error) {
-      console.log('Cart could not get created. Please check the logs -> ', error);
+      
     }
 
 

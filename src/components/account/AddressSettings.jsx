@@ -226,7 +226,7 @@ const AddressSettings = () => {
             updated_at: new Date().toISOString(),
           };
 
-          console.log('About to update -> ', updatedtmp);
+          
           const result = await updateAddress(updatedtmp);
           if (result) {
             await updateProfile({ addresses: result?.addresses });
@@ -244,11 +244,11 @@ const AddressSettings = () => {
           deleted_at: null,
           metadata: null
         };
-        console.log('About to create -> ', newAddress);
+        
         const result = await createAddress({ ...newAddress });
 
         if (result && result?.addresses) {
-          console.log('created address successfully -> ', result);
+         
           await updateProfile({ addresses: result?.addresses });
         }
       }
@@ -263,11 +263,11 @@ const AddressSettings = () => {
   };
 
   const handleEdit = (address) => {
-    console.log('Original country_code:', address.country_code);
+    
 
     // Get the country name for display in the form
     const countryName = getCountry_code_name('name', address.country_code);
-    console.log('Converted to country name:', countryName);
+    
 
     setFormData({
       ...address,
