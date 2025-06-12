@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ChevronLeftIcon, FunnelIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, FunnelIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useSearch } from '../contexts/SearchContext';
 import { useAuth } from '../contexts/AuthContext';
 import ProductGrid from '../components/product/ProductGrid';
@@ -276,7 +276,7 @@ const HomePage = () => {
   // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
-    const maxVisible = 5;
+    const maxVisible = window.innerWidth < 640 ? 3 : 5; // Fewer pages on mobile
 
     if (totalPages <= maxVisible) {
       for (let i = 1; i <= totalPages; i++) {
@@ -284,15 +284,17 @@ const HomePage = () => {
       }
     } else {
       if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) {
+        for (let i = 1; i <= Math.min(4, maxVisible - 1); i++) {
           pageNumbers.push(i);
         }
-        pageNumbers.push('...');
-        pageNumbers.push(totalPages);
+        if (totalPages > maxVisible - 1) {
+          pageNumbers.push('...');
+          pageNumbers.push(totalPages);
+        }
       } else if (currentPage >= totalPages - 2) {
         pageNumbers.push(1);
         pageNumbers.push('...');
-        for (let i = totalPages - 3; i <= totalPages; i++) {
+        for (let i = Math.max(totalPages - 3, 1); i <= totalPages; i++) {
           pageNumbers.push(i);
         }
       } else {
@@ -321,6 +323,7 @@ const HomePage = () => {
     setSortBy('none');
     setPriceRange('all');
     setCurrentPage(1);
+    setShowFilters(false); // Close mobile filters
     navigate(href);
   };
 
@@ -331,56 +334,99 @@ const HomePage = () => {
   };
   
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+    <div className={`min-h-screen transition-colors duration-200 ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
+        
         {/* Breadcrumb */}
-        <nav className={`flex items-center space-x-2 text-sm mb-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          <Link to="/" className={`${darkMode ? 'hover:text-gray-300' : 'hover:text-gray-700'}`}>
+        <nav className={`flex items-center space-x-2 text-xs sm:text-sm mb-4 sm:mb-6 lg:mb-8 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <Link to="/" className={`transition-colors hover:scale-105 ${darkMode ? 'hover:text-gray-300' : 'hover:text-gray-700'}`}>
             Home
           </Link>
-          <ChevronLeftIcon className="h-4 w-4 rotate-180" />
-          <span className={darkMode ? 'text-white' : 'text-gray-900'}>
+          <ChevronLeftIcon className="h-3 w-3 sm:h-4 sm:w-4 rotate-180" />
+          <span className={`truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             {categoryNameMedusa}
           </span>
         </nav>
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-          <div>
-            <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className={`text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               {categoryNameMedusa}
             </h1>
-            <p className={`mt-2 text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <p className={`mt-1 sm:mt-2 text-sm sm:text-base lg:text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               {currentCategoryProductCount}
             </p>
           </div>
+          
+          {/* Mobile Filter Button */}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`sm:hidden mt-4 flex items-center px-4 py-2 border rounded-md text-sm font-medium ${darkMode
+            className={`lg:hidden flex items-center px-3 sm:px-4 py-2 sm:py-2.5 border rounded-lg text-xs sm:text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${darkMode
               ? 'border-gray-600 text-gray-300 bg-gray-800 hover:bg-gray-700'
               : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
               }`}
           >
             <FunnelIcon className="h-4 w-4 mr-2" />
             Filters
+            {(sortBy !== 'none' || priceRange !== 'all') && (
+              <span className={`ml-2 h-2 w-2 rounded-full ${darkMode ? 'bg-white' : 'bg-black'}`} />
+            )}
           </button>
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Sidebar */}
-          <div className={`lg:w-64 ${showFilters ? 'block' : 'hidden lg:block'}`}>
-            <div className={`border rounded-lg p-6 sticky top-8 max-h-[calc(100vh-6rem)] overflow-y-auto ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-              }`}>
-              <h3 className={`text-lg font-medium mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
+          
+          {/* Mobile Filter Overlay */}
+          {showFilters && (
+            <div className="lg:hidden fixed inset-0 z-50 overflow-y-auto">
+              <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowFilters(false)} />
+              <div className={`relative w-full max-w-sm mx-auto my-8 rounded-lg shadow-xl ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <div className="flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+                  <h3 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Filters
+                  </h3>
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className={`p-1.5 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="p-4 max-h-[70vh] overflow-y-auto">
+                  {/* Mobile Filter Content - Same as sidebar but in modal */}
+                  <MobileFilterContent 
+                    categoriesMedusa={categoriesMedusa}
+                    handle={handle}
+                    handleCategoryChange={handleCategoryChange}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                    sortOptions={sortOptions}
+                    priceRange={priceRange}
+                    setPriceRange={setPriceRange}
+                    priceOptions={priceOptions}
+                    clearAllFilters={clearAllFilters}
+                    darkMode={darkMode}
+                    setLoading={setLoading}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop Sidebar */}
+          <div className="hidden lg:block lg:w-64 xl:w-72 flex-shrink-0">
+            <div className={`border rounded-lg sm:rounded-xl p-4 sm:p-6 sticky top-4 sm:top-8 max-h-[calc(100vh-4rem)] sm:max-h-[calc(100vh-6rem)] overflow-y-auto transition-colors duration-200 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+              <h3 className={`text-base sm:text-lg font-medium mb-4 sm:mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Filters
               </h3>
 
               {/* Categories */}
-              <div className="mb-6">
-                <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <div className="mb-4 sm:mb-6">
+                <label className={`block text-xs sm:text-sm font-medium mb-2 sm:mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Categories
                 </label>
-                <div className="space-y-2">
+                <div className="space-y-1 sm:space-y-2">
                   {categoriesMedusa.map(category => (
                     <button
                       key={category.id}
@@ -388,7 +434,7 @@ const HomePage = () => {
                         setLoading(true);
                         handleCategoryChange(category.handle, category.href);
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm rounded-md ${(category.handle === handle) || (!handle && category.value === 'all')
+                      className={`w-full text-left px-3 py-2 text-xs sm:text-sm rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${(category.handle === handle) || (!handle && category.value === 'all')
                         ? darkMode ? 'bg-white text-black' : 'bg-black text-white'
                         : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
                         }`}
@@ -400,16 +446,16 @@ const HomePage = () => {
               </div>
 
               {/* Sort By */}
-              <div className="mb-6">
-                <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <div className="mb-4 sm:mb-6">
+                <label className={`block text-xs sm:text-sm font-medium mb-2 sm:mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Sort By
                 </label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className={`w-full border rounded-md px-3 py-2 text-sm ${darkMode
-                    ? 'border-gray-600 bg-gray-700 text-white'
-                    : 'border-gray-300 bg-white text-gray-900'
+                  className={`w-full border rounded-lg px-3 py-2 text-xs sm:text-sm transition-colors duration-200 ${darkMode
+                    ? 'border-gray-600 bg-gray-700 text-white focus:ring-white focus:border-white'
+                    : 'border-gray-300 bg-white text-gray-900 focus:ring-black focus:border-black'
                     }`}
                 >
                   {sortOptions.map(opt => (
@@ -419,11 +465,11 @@ const HomePage = () => {
               </div>
 
               {/* Price Range */}
-              <div className="mb-6">
-                <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <div className="mb-4 sm:mb-6">
+                <label className={`block text-xs sm:text-sm font-medium mb-2 sm:mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Price Range
                 </label>
-                <div className="space-y-2">
+                <div className="space-y-2 sm:space-y-3">
                   {priceOptions.map(opt => (
                     <label key={opt.value} className="flex items-center">
                       <input
@@ -431,12 +477,12 @@ const HomePage = () => {
                         value={opt.value}
                         checked={priceRange === opt.value}
                         onChange={(e) => setPriceRange(e.target.value)}
-                        className={`h-4 w-4 border-gray-300 ${darkMode
+                        className={`h-3 w-3 sm:h-4 sm:w-4 border-gray-300 transition-colors duration-200 ${darkMode
                           ? 'text-white focus:ring-white border-gray-600'
                           : 'text-black focus:ring-black'
                           }`}
                       />
-                      <span className={`ml-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      <span className={`ml-2 sm:ml-3 text-xs sm:text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                         {opt.label}
                       </span>
                     </label>
@@ -447,7 +493,7 @@ const HomePage = () => {
               {/* Clear Filters */}
               <button
                 onClick={clearAllFilters}
-                className={`w-full text-sm border rounded-md px-4 py-2 ${darkMode
+                className={`w-full text-xs sm:text-sm border rounded-lg px-4 py-2 sm:py-2.5 transition-all duration-200 hover:scale-105 active:scale-95 ${darkMode
                   ? 'text-gray-400 hover:text-gray-200 border-gray-600 hover:bg-gray-700'
                   : 'text-gray-600 hover:text-gray-800 border-gray-300 hover:bg-gray-50'
                   }`}
@@ -458,20 +504,20 @@ const HomePage = () => {
           </div>
 
           {/* Product Grid */}
-          <div className="flex-1">
-            {/* Results Header */}
-            <div className="hidden sm:flex items-center justify-between mb-6">
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          <div className="flex-1 min-w-0">
+            {/* Desktop Results Header */}
+            <div className="hidden sm:flex items-center justify-between mb-4 sm:mb-6">
+              <p className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {loading
                   ? 'Loading products...'
                   : `Showing ${(currentPage - 1) * productsPerPage + 1}-${Math.min(currentPage * productsPerPage, totalProducts)} of ${totalProducts} products`
                 }
               </p>
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3 sm:space-x-4">
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className={`border rounded-md px-3 py-2 text-sm ${darkMode
+                  className={`border rounded-lg px-3 py-2 text-xs sm:text-sm transition-colors duration-200 ${darkMode
                     ? 'border-gray-600 bg-gray-700 text-white'
                     : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -487,12 +533,20 @@ const HomePage = () => {
 
             {/* Pagination */}
             {!loading && totalPages > 1 && (
-              <div className="flex items-center justify-center mt-12 space-x-2">
+              <div className="flex flex-col sm:flex-row items-center justify-center mt-8 sm:mt-12 space-y-4 sm:space-y-0 sm:space-x-2">
+                
+                {/* Mobile Pagination Info */}
+                <div className="sm:hidden text-center mb-4">
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Page {currentPage} of {totalPages}
+                  </p>
+                </div>
+
                 {/* Previous Button */}
                 <button
                   onClick={handlePrevPage}
                   disabled={currentPage === 1}
-                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${currentPage === 1
+                  className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${currentPage === 1
                     ? darkMode
                       ? 'text-gray-500 cursor-not-allowed'
                       : 'text-gray-400 cursor-not-allowed'
@@ -501,8 +555,9 @@ const HomePage = () => {
                       : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                 >
-                  <ChevronLeftIcon className="h-4 w-4 mr-1" />
-                  Previous
+                  <ChevronLeftIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden sm:inline">Previous</span>
+                  <span className="sm:hidden">Prev</span>
                 </button>
 
                 {/* Page Numbers */}
@@ -510,13 +565,13 @@ const HomePage = () => {
                   {getPageNumbers().map((pageNum, index) => (
                     <React.Fragment key={index}>
                       {pageNum === '...' ? (
-                        <span className={`px-3 py-2 text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                        <span className={`px-2 sm:px-3 py-2 text-xs sm:text-sm ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                           ...
                         </span>
                       ) : (
                         <button
                           onClick={() => handlePageChange(pageNum)}
-                          className={`px-3 py-2 text-sm font-medium rounded-md ${currentPage === pageNum
+                          className={`px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${currentPage === pageNum
                             ? darkMode
                               ? 'bg-white text-black'
                               : 'bg-black text-white'
@@ -536,7 +591,7 @@ const HomePage = () => {
                 <button
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
-                  className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${currentPage === totalPages
+                  className={`flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${currentPage === totalPages
                     ? darkMode
                       ? 'text-gray-500 cursor-not-allowed'
                       : 'text-gray-400 cursor-not-allowed'
@@ -545,17 +600,34 @@ const HomePage = () => {
                       : 'text-gray-700 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                 >
-                  Next
-                  <ChevronRightIcon className="h-4 w-4 ml-1" />
+                  <span className="hidden sm:inline">Next</span>
+                  <span className="sm:hidden">Next</span>
+                  <ChevronRightIcon className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                 </button>
               </div>
             )}
 
             {/* No products message */}
             {products.length === 0 && !loading && (
-              <p className={`text-center text-lg mt-8 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                No products found for this category and filter.
-              </p>
+              <div className="text-center py-8 sm:py-12">
+                <div className={`mx-auto h-16 w-16 sm:h-20 sm:w-20 rounded-full flex items-center justify-center mb-4 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                  <svg className={`h-8 w-8 sm:h-10 sm:w-10 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-6m-8 0h6m-6 0h6" />
+                  </svg>
+                </div>
+                <p className={`text-sm sm:text-base lg:text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  No products found for this category and filter.
+                </p>
+                <button
+                  onClick={clearAllFilters}
+                  className={`mt-4 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${darkMode
+                    ? 'bg-white text-black hover:bg-gray-100'
+                    : 'bg-black text-white hover:bg-gray-800'
+                    }`}
+                >
+                  Clear All Filters
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -563,5 +635,103 @@ const HomePage = () => {
     </div>
   );
 };
+
+// Mobile Filter Component
+const MobileFilterContent = ({ 
+  categoriesMedusa, 
+  handle, 
+  handleCategoryChange, 
+  sortBy, 
+  setSortBy, 
+  sortOptions, 
+  priceRange, 
+  setPriceRange, 
+  priceOptions, 
+  clearAllFilters, 
+  darkMode,
+  setLoading 
+}) => (
+  <>
+    {/* Categories */}
+    <div className="mb-6">
+      <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        Categories
+      </label>
+      <div className="space-y-2">
+        {categoriesMedusa.map(category => (
+          <button
+            key={category.id}
+            onClick={() => {
+              setLoading(true);
+              handleCategoryChange(category.handle, category.href);
+            }}
+            className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${(category.handle === handle) || (!handle && category.value === 'all')
+              ? darkMode ? 'bg-white text-black' : 'bg-black text-white'
+              : darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'
+              }`}
+          >
+            {category.label}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    {/* Sort By */}
+    <div className="mb-6">
+      <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        Sort By
+      </label>
+      <select
+        value={sortBy}
+        onChange={(e) => setSortBy(e.target.value)}
+        className={`w-full border rounded-lg px-3 py-2 text-sm transition-colors duration-200 ${darkMode
+          ? 'border-gray-600 bg-gray-700 text-white focus:ring-white focus:border-white'
+          : 'border-gray-300 bg-white text-gray-900 focus:ring-black focus:border-black'
+          }`}
+      >
+        {sortOptions.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+
+    {/* Price Range */}
+    <div className="mb-6">
+      <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+        Price Range
+      </label>
+      <div className="space-y-3">
+        {priceOptions.map(opt => (
+          <label key={opt.value} className="flex items-center">
+            <input
+              type="radio"
+              value={opt.value}
+              checked={priceRange === opt.value}
+              onChange={(e) => setPriceRange(e.target.value)}
+              className={`h-4 w-4 border-gray-300 transition-colors duration-200 ${darkMode
+                ? 'text-white focus:ring-white border-gray-600'
+                : 'text-black focus:ring-black'
+                }`}
+            />
+            <span className={`ml-3 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              {opt.label}
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+
+    {/* Clear Filters */}
+    <button
+      onClick={clearAllFilters}
+      className={`w-full text-sm border rounded-lg px-4 py-2.5 transition-all duration-200 hover:scale-105 active:scale-95 ${darkMode
+        ? 'text-gray-400 hover:text-gray-200 border-gray-600 hover:bg-gray-700'
+        : 'text-gray-600 hover:text-gray-800 border-gray-300 hover:bg-gray-50'
+        }`}
+    >
+      Clear All Filters
+    </button>
+  </>
+);
 
 export default HomePage;

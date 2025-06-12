@@ -70,56 +70,96 @@ export const CartProvider = ({ children }) => {
     loading: false
   });
 
-  // Initialize cart from localStorage
+  // Initialize cart on component mount
   useEffect(() => {
-    const savedCart = localStorage.getItem('medusa-cart');
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        dispatch({ type: 'SET_CART', payload: parsedCart });
-      } catch (error) {
-        console.error('Error parsing saved cart:', error);
-      }
-    }
+    initializeCart();
   }, []);
 
-  // Save cart to localStorage whenever it changes
+  // Save cart to localStorage whenever it changes (but only if it has an ID)
   useEffect(() => {
-    if (state.cart && state.cart.items.length >= 0) {
-      localStorage.setItem('medusa-cart', JSON.stringify(state.cart));
+    if (state.cart?.id) {
+      localStorage.setItem('medusa_cart_id', state.cart.id);
+      localStorage.setItem('medusa_cart_data', JSON.stringify(state.cart));
     }
   }, [state.cart]);
 
-  const initMedusaCart = async (obj) => {
-    
+  const initializeCart = async () => {
     try {
-      if (obj) {
-        if (localStorage.getItem('medusa_cart_id')) {
-          return await updateMedusaCart(obj);
-        } else {
-          dispatch({ type: 'SET_LOADING', payload: true });
-          const result = await medusaClient.store.cart.create({
-            ...obj
-          })
-            .then(({ cart }) => {
-              
-              if (cart?.id) {
-                dispatch({ type: 'SET_CART', payload: { ...cart } });
-                localStorage.setItem('medusa_cart_id', cart?.id);
-                toast.success('Cart creation success!');
-              }
+      dispatch({ type: 'SET_LOADING', payload: true });
+      
+      const savedCartId = localStorage.getItem('medusa_cart_id');
+      const savedCartData = localStorage.getItem('medusa_cart_data');
 
-            })
-          dispatch({ type: 'SET_LOADING', payload: false });
+      if (savedCartId) {
+        try {
+          // Try to fetch the latest cart from the server
+          const { cart } = await medusaClient.store.cart.retrieve(savedCartId);
+          dispatch({ type: 'SET_CART', payload: cart });
+          console.log('Cart loaded from server:', cart);
+        } catch (error) {
+          console.warn('Failed to load cart from server, using cached data:', error);
+          
+          // If server fetch fails, try to use cached data
+          if (savedCartData) {
+            try {
+              const parsedCart = JSON.parse(savedCartData);
+              dispatch({ type: 'SET_CART', payload: parsedCart });
+              console.log('Cart loaded from cache:', parsedCart);
+            } catch (parseError) {
+              console.error('Failed to parse cached cart data:', parseError);
+              // Clear invalid data and start fresh
+              localStorage.removeItem('medusa_cart_id');
+              localStorage.removeItem('medusa_cart_data');
+              dispatch({ type: 'SET_CART', payload: { items: [] } });
+            }
+          } else {
+            // No cached data, start with empty cart
+            localStorage.removeItem('medusa_cart_id');
+            dispatch({ type: 'SET_CART', payload: { items: [] } });
+          }
         }
-
+      } else {
+        // No saved cart ID, start with empty cart
+        dispatch({ type: 'SET_CART', payload: { items: [] } });
       }
     } catch (error) {
-      toast.error('failed to initialize a cart');
-      
+      console.error('Error initializing cart:', error);
+      dispatch({ type: 'SET_CART', payload: { items: [] } });
+    } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }
+  };
+
+  const initMedusaCart = async (obj) => {
+    try {
+      const existingCartId = localStorage.getItem('medusa_cart_id');
+      
+      if (existingCartId) {
+        // Update existing cart
+        return await updateMedusaCart(obj);
+      } else {
+        // Create new cart
+        dispatch({ type: 'SET_LOADING', payload: true });
+        const { cart } = await medusaClient.store.cart.create({
+          ...obj
+        });
+        
+        if (cart?.id) {
+          dispatch({ type: 'SET_CART', payload: cart });
+          localStorage.setItem('medusa_cart_id', cart.id);
+          localStorage.setItem('medusa_cart_data', JSON.stringify(cart));
+          toast.success('Cart created successfully!');
+          console.log('New cart created:', cart);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to initialize cart:', error);
+      toast.error('Failed to initialize cart');
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
   const setCartForCustomer = async (userId, regionObj) => {
     if (!userId || !regionObj) {
       console.error('Missing userId or regionObj');
@@ -132,29 +172,28 @@ export const CartProvider = ({ children }) => {
       // Get user cart storage (should be an array of user carts)
       const userCartStorage = JSON.parse(localStorage.getItem('user_cart') || '[]');
       
-
       // Find this user's cart
       const userCartEntry = userCartStorage.find(entry => entry?.user_id === userId);
       
-
       if (userCartEntry?.cart?.id) {
         // User has existing cart - try to retrieve it
         try {
-          const result = await medusaClient.store.cart.retrieve(userCartEntry.cart.id);
+          const { cart } = await medusaClient.store.cart.retrieve(userCartEntry.cart.id);
           
-
           // Set the retrieved cart
-          dispatch({ type: 'SET_CART', payload: result.cart });
-          localStorage.setItem('medusa_cart_id', result.cart.id);
+          dispatch({ type: 'SET_CART', payload: cart });
+          localStorage.setItem('medusa_cart_id', cart.id);
+          localStorage.setItem('medusa_cart_data', JSON.stringify(cart));
           toast.success('Loaded existing cart!');
+          console.log('User cart loaded:', cart);
 
         } catch (error) {
-          
+          console.warn('User cart not found on server, creating new one:', error);
           // Cart doesn't exist on server anymore, create new one
           await createNewCartForUser(userId, regionObj, userCartStorage);
         }
       } else {
-        
+        console.log('No existing cart for user, creating new one');
         await createNewCartForUser(userId, regionObj, userCartStorage);
       }
 
@@ -173,11 +212,10 @@ export const CartProvider = ({ children }) => {
         region_id: regionObj.code
       });
 
-      
-
       // Set cart in state
       dispatch({ type: 'SET_CART', payload: cart });
       localStorage.setItem('medusa_cart_id', cart.id);
+      localStorage.setItem('medusa_cart_data', JSON.stringify(cart));
 
       // Update user cart storage
       const updatedStorage = currentStorage.filter(entry => entry.user_id !== userId);
@@ -189,112 +227,188 @@ export const CartProvider = ({ children }) => {
 
       localStorage.setItem('user_cart', JSON.stringify(updatedStorage));
       toast.success('Generated new cart for user!');
+      console.log('New user cart created:', cart);
 
     } catch (error) {
       console.error('Error creating cart:', error);
       toast.error('Failed to create cart');
     }
   };
-  const updateMedusaCart = async (obj) => {
-    if (obj && state.cart) {
-      const cart_id = localStorage.getItem('medusa_cart_id');
-      if (cart_id) {
-        try {
-          dispatch({ type: 'SET_LOADING', payload: true });
-          const result = await medusaClient.store.cart.update(cart_id, {
-            ...obj
-          })
-            .then(({ cart }) => {
-              if (cart?.id) {
-                
-                dispatch({ type: 'SET_CART', payload: { ...cart } });
-                localStorage.setItem('medusa_cart_id', cart?.id);
-                toast.success('Cart updated successfully!');
-              }
-            });
-          dispatch({ type: 'SET_LOADING', payload: false });
-        } catch (error) {
-          toast.error('failed to update a cart');
-         
-          dispatch({ type: 'SET_LOADING', payload: false });
-        }
-      }
 
+  const updateMedusaCart = async (obj) => {
+    const cart_id = localStorage.getItem('medusa_cart_id');
+    
+    if (!cart_id) {
+      console.warn('No cart ID found, cannot update cart');
+      return;
     }
 
-  }
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const { cart } = await medusaClient.store.cart.update(cart_id, {
+        ...obj
+      });
+      
+      if (cart?.id) {
+        dispatch({ type: 'SET_CART', payload: cart });
+        localStorage.setItem('medusa_cart_id', cart.id);
+        localStorage.setItem('medusa_cart_data', JSON.stringify(cart));
+        toast.success('Cart updated successfully!');
+        console.log('Cart updated:', cart);
+      }
+    } catch (error) {
+      console.error('Failed to update cart:', error);
+      toast.error('Failed to update cart');
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
 
   const addToCartMedusa = async (item) => {
-    if (localStorage.getItem('medusa_cart_id') && item?.variant_id) {
-      const cart_id = localStorage.getItem('medusa_cart_id');
-      try {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        await medusaClient.store.cart.createLineItem(cart_id, {
-          variant_id: item?.variant_id,
-          quantity: item?.quantity || 1
-        })
-          .then(({ cart }) => {
-            
-            if (cart?.id) {
-              localStorage.setItem('medusa_cart_id', cart?.id);
-              dispatch({ type: 'ADD_ITEM', payload: item });
-              dispatch({ type: 'SET_CART', payload: { ...cart } });
-              toast.success('Added to cart');
-            }
-          })
-        dispatch({ type: 'SET_LOADING', payload: false });
-      } catch (error) {
-        toast.error('Failed to add to cart');
-        console.error('Add to cart error:', error);
-        dispatch({ type: 'SET_LOADING', payload: false });
+    const cart_id = localStorage.getItem('medusa_cart_id');
+    
+    if (!cart_id) {
+      toast.error('No cart found. Please refresh the page.');
+      return;
+    }
+
+    if (!item?.variant_id) {
+      toast.error('Invalid item');
+      return;
+    }
+
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const { cart } = await medusaClient.store.cart.createLineItem(cart_id, {
+        variant_id: item.variant_id,
+        quantity: item.quantity || 1
+      });
+      
+      if (cart?.id) {
+        dispatch({ type: 'SET_CART', payload: cart });
+        localStorage.setItem('medusa_cart_data', JSON.stringify(cart));
+        toast.success('Added to cart');
+        console.log('Item added to cart:', cart);
       }
+    } catch (error) {
+      console.error('Add to cart error:', error);
+      toast.error('Failed to add to cart');
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
  
   const updateCartItemMedusa = async (itemId, quantity) => {
-    if (localStorage.getItem('medusa_cart_id') && itemId && quantity) {
-      try {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        if (quantity <= 0) {
-          return removeFromCartMedusa(itemId);
-        }
-        await medusaClient.store.cart.updateLineItem(
-          localStorage.getItem('medusa_cart_id'),
-          itemId,
-          {
-            quantity: quantity || 1
-          }
-        )
-          .then(({ cart }) => {
-            if (cart?.id) {
-              localStorage.setItem('medusa_cart_id', cart?.id);
-              dispatch({ type: 'UPDATE_ITEM', payload: { id: itemId, quantity } });
-              dispatch({ type: 'SET_CART', payload: { ...cart } });
-              toast.success('Cart updated');
+    const cart_id = localStorage.getItem('medusa_cart_id');
+    
+    if (!cart_id || !itemId) {
+      toast.error('Invalid cart or item');
+      return;
+    }
 
-            }
-          })
+    if (quantity <= 0) {
+      return removeFromCartMedusa(itemId);
+    }
 
-        dispatch({ type: 'SET_LOADING', payload: false });
-
-      } catch (error) {
-        toast.error('Failed to update cart');
-        console.error('Update cart error:', error);
-        dispatch({ type: 'SET_LOADING', payload: false });
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const { cart } = await medusaClient.store.cart.updateLineItem(
+        cart_id,
+        itemId,
+        { quantity: quantity }
+      );
+      
+      if (cart?.id) {
+        dispatch({ type: 'SET_CART', payload: cart });
+        localStorage.setItem('medusa_cart_data', JSON.stringify(cart));
+        toast.success('Cart updated');
+        console.log('Cart item updated:', cart);
       }
+    } catch (error) {
+      console.error('Update cart error:', error);
+      toast.error('Failed to update cart');
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
-  const addToCart = async (item) => {
+  const removeFromCartMedusa = async (itemId) => {
+    const cart_id = localStorage.getItem('medusa_cart_id');
+    
+    if (!cart_id || !itemId) {
+      toast.error('Invalid cart or item');
+      return;
+    }
+
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
+      const { deleted, parent: cart } = await medusaClient.store.cart.deleteLineItem(
+        cart_id,
+        itemId
+      );
+      
+      if (cart?.id) {
+        dispatch({ type: 'SET_CART', payload: cart });
+        localStorage.setItem('medusa_cart_data', JSON.stringify(cart));
+        toast.success('Removed from cart');
+        console.log('Item removed from cart:', cart);
+      }
+    } catch (error) {
+      console.error('Remove from cart error:', error);
+      toast.error('Failed to remove from cart');
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
+  const clearCartMedusa = async () => {
+    const cart_id = localStorage.getItem('medusa_cart_id');
+    
+    if (!cart_id) {
+      toast.error('No cart found');
+      return;
+    }
+
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       
-      // In a real app, you'd call the Medusa API here
-      // For now, we'll just add to local state
+      // Get current cart
+      const { cart } = await medusaClient.store.cart.retrieve(cart_id);
+      
+      // Early return if cart is empty
+      if (!cart?.items?.length) {
+        toast.info('Cart is already empty');
+        return;
+      }
 
-      // end update
+      // Delete all items in parallel
+      const deletePromises = cart.items.map(item => 
+        medusaClient.store.cart.deleteLineItem(cart_id, item.id)
+      );
+      
+      await Promise.all(deletePromises);
+      
+      // Get final cart state and update
+      const { cart: updatedCart } = await medusaClient.store.cart.retrieve(cart_id);
+      dispatch({ type: 'SET_CART', payload: updatedCart });
+      localStorage.setItem('medusa_cart_data', JSON.stringify(updatedCart));
+      
+      toast.success('Cart cleared!');
+      console.log('Cart cleared:', updatedCart);
+      
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      toast.error('Failed to clear cart');
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }
+  };
+
+  // Legacy functions for backward compatibility
+  const addToCart = async (item) => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'ADD_ITEM', payload: item });
-
       toast.success('Added to cart');
     } catch (error) {
       toast.error('Failed to add to cart');
@@ -309,38 +423,11 @@ export const CartProvider = ({ children }) => {
       if (quantity <= 0) {
         return removeFromCart(itemId);
       }
-
       dispatch({ type: 'UPDATE_ITEM', payload: { id: itemId, quantity } });
       toast.success('Cart updated');
     } catch (error) {
       toast.error('Failed to update cart');
       console.error('Update cart error:', error);
-    }
-  };
- 
-  const removeFromCartMedusa = async (itemId) => {
-    if (localStorage.getItem('medusa_cart_id') && itemId) {
-      try {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        await medusaClient.store.cart.deleteLineItem(
-          localStorage.getItem('medusa_cart_id'),
-          itemId
-        )
-          .then(({ deleted, parent: cart }) => {
-            if (cart?.id) {
-              
-              dispatch({ type: 'REMOVE_ITEM', payload: itemId });
-              dispatch({ type: 'SET_CART', payload: { ...cart } });
-              toast.success('Removed from cart');
-            }
-          });
-
-        dispatch({ type: 'SET_LOADING', payload: false });
-      } catch (error) {
-        toast.error('Failed to remove from cart');
-        console.error('Remove from cart error:', error);
-        dispatch({ type: 'SET_LOADING', payload: false });
-      }
     }
   };
 
@@ -356,49 +443,11 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' });
-    localStorage.removeItem('medusa-cart');
+    localStorage.removeItem('medusa_cart_id');
+    localStorage.removeItem('medusa_cart_data');
+    localStorage.removeItem('medusa-cart'); // Remove old key too
     toast.success('Cart cleared');
   };
-  const clearCartMedusa = async () => {
-  const cart_id = localStorage.getItem('medusa_cart_id');
-  
-  if (!cart_id) {
-    toast.error('No cart found');
-    return;
-  }
-
-  try {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    
-    // 1. Get current cart
-    const { cart } = await medusaClient.store.cart.retrieve(cart_id);
-    
-    // 2. Early return if cart is empty
-    if (!cart?.items?.length) {
-      toast.info('Cart is already empty');
-      return;
-    }
-
-    // 3. Delete all items in parallel (fastest approach)
-    const deletePromises = cart.items.map(item => 
-      medusaClient.store.cart.deleteLineItem(cart_id, item.id)
-    );
-    
-    await Promise.all(deletePromises);
-    
-    // 4. Get final cart state and update
-    const { cart: updatedCart } = await medusaClient.store.cart.retrieve(cart_id);
-    dispatch({ type: 'SET_CART', payload: updatedCart });
-    
-    toast.success('Cart cleared!');
-    
-  } catch (error) {
-    console.error('Error clearing cart:', error);
-    toast.error('Failed to clear cart');
-  } finally {
-    dispatch({ type: 'SET_LOADING', payload: false });
-  }
-};
 
   const getCartTotal = () => {
     return state.cart?.items?.reduce((total, item) => {
@@ -409,8 +458,6 @@ export const CartProvider = ({ children }) => {
   const getCartItemsCount = () => {
     return state.cart?.items?.reduce((count, item) => count + item.quantity, 0) || 0;
   };
-
-
 
   const value = {
     cart: state.cart,
@@ -427,7 +474,8 @@ export const CartProvider = ({ children }) => {
     addToCartMedusa,
     updateCartItemMedusa,
     removeFromCartMedusa,
-    clearCartMedusa
+    clearCartMedusa,
+    initializeCart // Export for manual re-initialization if needed
   };
 
   return (

@@ -64,69 +64,79 @@ const Footer = () => {
   return (
     <footer className={`transition-colors duration-300 ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'
       }`}>
-      <div className="mx-auto max-w-7xl overflow-hidden px-6 py-20 sm:py-24 lg:px-8">
-        <div className="xl:grid xl:grid-cols-3 xl:gap-8">
-          <div className="space-y-8">
-            <Link to="/" className={`text-2xl font-bold transition-colors duration-300 ${darkMode ? 'text-white' : 'text-gray-900'
-              }`}>
-              CodeByCisse-Commerce
+      <div className="mx-auto max-w-7xl overflow-hidden px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 xl:py-24">
+        {/* Main Footer Content */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12 xl:gap-16">
+          {/* Brand Section - Full width on mobile, 1/3 on large screens */}
+          <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+            <Link 
+              to="/" 
+              className={`inline-block text-xl sm:text-2xl font-bold transition-colors duration-300 hover:scale-105 ${darkMode ? 'text-white hover:text-gray-100' : 'text-gray-900 hover:text-gray-700'}`}
+            >
+              <span className="block sm:hidden">CBC</span>
+              <span className="hidden sm:block lg:hidden">CodeByCisse</span>
+              <span className="hidden lg:block">CodeByCisse-Commerce</span>
             </Link>
-            <p className={`text-sm leading-6 transition-colors duration-300 ${darkMode ? 'text-gray-300' : 'text-gray-600'
-              }`}>
+            <p className={`text-sm sm:text-base leading-6 max-w-md transition-colors duration-300 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
               A modern eCommerce platform showcasing quality products with seamless shopping experience
             </p>
-            {/* <div className="flex space-x-6">
-            {social.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className={`transition-colors duration-300 ${
-                  darkMode 
-                    ? 'text-gray-400 hover:text-gray-300' 
-                    : 'text-gray-500 hover:text-gray-600'
-                }`}
-              >
-                <span className="sr-only">{item.name}</span>
-                <item.icon className="h-6 w-6" aria-hidden="true" />
-              </a>
-            ))}
-          </div> */}
+            {/* Social Media Section - Uncomment when needed */}
+            {/* <div className="flex space-x-4 sm:space-x-6">
+              {social.map((item) => (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className={`transition-all duration-300 hover:scale-110 ${
+                    darkMode 
+                      ? 'text-gray-400 hover:text-gray-300' 
+                      : 'text-gray-500 hover:text-gray-600'
+                  }`}
+                  aria-label={item.name}
+                >
+                  <item.icon className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
+                </a>
+              ))}
+            </div> */}
           </div>
-          <div className="mt-16 grid grid-cols-2 gap-8 xl:col-span-2 xl:mt-0">
-            <div className="md:grid md:grid-cols-2 md:gap-8">
-              <div>
-                <h3 className={`text-sm font-semibold leading-6 transition-colors duration-300 ${darkMode ? 'text-white' : 'text-gray-900'
-                  }`}>
-                  Shop
-                </h3>
-                <ul role="list" className="mt-6 space-y-4">
-                  {navigation.shop.map((item) => (
-                    <li key={item.name}>
-                      <Link
-                        to={item.href}
-                        className={`text-sm leading-6 transition-colors duration-300 ${darkMode
-                            ? 'text-gray-300 hover:text-white'
-                            : 'text-gray-600 hover:text-gray-900'
-                          }`}
-                      >
-                        {item.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              {/* <div className="mt-10 md:mt-0">
-              <h3 className={`text-sm font-semibold leading-6 transition-colors duration-300 ${
+          
+          {/* Navigation Section - Responsive grid */}
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:col-span-2 lg:gap-12">
+            {/* Shop Links */}
+            <div className="space-y-4 sm:space-y-6">
+              <h3 className={`text-sm sm:text-base font-semibold leading-6 transition-colors duration-300 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Shop
+              </h3>
+              <ul role="list" className="space-y-3 sm:space-y-4">
+                {navigation.shop.map((item) => (
+                  <li key={item.name}>
+                    <Link
+                      to={item.href}
+                      className={`text-sm sm:text-base leading-6 transition-all duration-300 hover:scale-105 inline-block ${darkMode
+                          ? 'text-gray-300 hover:text-white'
+                          : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Additional Navigation Sections - Uncomment when needed */}
+            {/* Company Links */}
+            {/* <div className="space-y-4 sm:space-y-6">
+              <h3 className={`text-sm sm:text-base font-semibold leading-6 transition-colors duration-300 ${
                 darkMode ? 'text-white' : 'text-gray-900'
               }`}>
                 Company
               </h3>
-              <ul role="list" className="mt-6 space-y-4">
+              <ul role="list" className="space-y-3 sm:space-y-4">
                 {navigation.company.map((item) => (
                   <li key={item.name}>
                     <Link 
                       to={item.href} 
-                      className={`text-sm leading-6 transition-colors duration-300 ${
+                      className={`text-sm sm:text-base leading-6 transition-all duration-300 hover:scale-105 inline-block ${
                         darkMode 
                           ? 'text-gray-300 hover:text-white' 
                           : 'text-gray-600 hover:text-gray-900'
@@ -138,20 +148,20 @@ const Footer = () => {
                 ))}
               </ul>
             </div> */}
-            </div>
-            {/* <div className="md:grid md:grid-cols-2 md:gap-8">
-            <div>
-              <h3 className={`text-sm font-semibold leading-6 transition-colors duration-300 ${
+
+            {/* Support Links */}
+            {/* <div className="space-y-4 sm:space-y-6">
+              <h3 className={`text-sm sm:text-base font-semibold leading-6 transition-colors duration-300 ${
                 darkMode ? 'text-white' : 'text-gray-900'
               }`}>
                 Support
               </h3>
-              <ul role="list" className="mt-6 space-y-4">
+              <ul role="list" className="space-y-3 sm:space-y-4">
                 {navigation.support.map((item) => (
                   <li key={item.name}>
                     <Link 
                       to={item.href} 
-                      className={`text-sm leading-6 transition-colors duration-300 ${
+                      className={`text-sm sm:text-base leading-6 transition-all duration-300 hover:scale-105 inline-block ${
                         darkMode 
                           ? 'text-gray-300 hover:text-white' 
                           : 'text-gray-600 hover:text-gray-900'
@@ -162,19 +172,21 @@ const Footer = () => {
                   </li>
                 ))}
               </ul>
-            </div>
-            <div className="mt-10 md:mt-0">
-              <h3 className={`text-sm font-semibold leading-6 transition-colors duration-300 ${
+            </div> */}
+
+            {/* Legal Links */}
+            {/* <div className="space-y-4 sm:space-y-6">
+              <h3 className={`text-sm sm:text-base font-semibold leading-6 transition-colors duration-300 ${
                 darkMode ? 'text-white' : 'text-gray-900'
               }`}>
                 Legal
               </h3>
-              <ul role="list" className="mt-6 space-y-4">
+              <ul role="list" className="space-y-3 sm:space-y-4">
                 {navigation.legal.map((item) => (
                   <li key={item.name}>
                     <Link 
                       to={item.href} 
-                      className={`text-sm leading-6 transition-colors duration-300 ${
+                      className={`text-sm sm:text-base leading-6 transition-all duration-300 hover:scale-105 inline-block ${
                         darkMode 
                           ? 'text-gray-300 hover:text-white' 
                           : 'text-gray-600 hover:text-gray-900'
@@ -185,16 +197,50 @@ const Footer = () => {
                   </li>
                 ))}
               </ul>
+            </div> */}
+
+            {/* Placeholder for when you add more sections */}
+            <div className="hidden sm:block lg:hidden">
+              {/* This creates proper spacing when you have an odd number of columns */}
             </div>
-          </div> */}
           </div>
         </div>
-        <div className={`mt-16 border-t pt-8 sm:mt-20 lg:mt-24 transition-colors duration-300 ${darkMode ? 'border-gray-400/10' : 'border-gray-300/30'
-          }`}>
-          <p className={`text-xs leading-5 transition-colors duration-300 ${darkMode ? 'text-gray-400' : 'text-gray-500'
-            }`}>
-            &copy; 2025 CodeByCisse. All rights reserved.
-          </p>
+
+        {/* Bottom Copyright Section */}
+        <div className={`mt-8 sm:mt-12 lg:mt-16 xl:mt-20 border-t pt-6 sm:pt-8 transition-colors duration-300 ${darkMode ? 'border-gray-400/10' : 'border-gray-300/30'}`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <p className={`text-xs sm:text-sm leading-5 transition-colors duration-300 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              &copy; 2025 CodeByCisse. All rights reserved.
+            </p>
+            
+            {/* Additional footer info - uncomment if needed */}
+            {/* <div className="flex flex-wrap gap-4 sm:gap-6">
+              <Link 
+                to="/privacy" 
+                className={`text-xs sm:text-sm transition-all duration-300 hover:scale-105 ${
+                  darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-600'
+                }`}
+              >
+                Privacy
+              </Link>
+              <Link 
+                to="/terms" 
+                className={`text-xs sm:text-sm transition-all duration-300 hover:scale-105 ${
+                  darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-600'
+                }`}
+              >
+                Terms
+              </Link>
+              <Link 
+                to="/cookies" 
+                className={`text-xs sm:text-sm transition-all duration-300 hover:scale-105 ${
+                  darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-600'
+                }`}
+              >
+                Cookies
+              </Link>
+            </div> */}
+          </div>
         </div>
       </div>
     </footer>

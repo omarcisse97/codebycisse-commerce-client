@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { useFocus } from './utils/useFocus'; // ← ADD THIS LINE
 import { CartProvider } from './contexts/CartContext';
 import { SearchProvider } from './contexts/SearchContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -18,16 +19,11 @@ import AccountPage from './pages/AccountPage';
 import './App.css';
 import { medusaClient } from "./utils/client";
 import CategoryList from './pages/CategoryList';
-// Layout component that wraps all pages
-
-
-// Create router configuration
-
 
 function App() {
-
-
   const Layout = () => {
+    useFocus(); // ← ADD THIS LINE
+    
     return (
       <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col transition-colors">
         <Header />
